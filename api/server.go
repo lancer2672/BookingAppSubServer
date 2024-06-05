@@ -2,8 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/lancer2672/BookingAppSubServer/utils"
-	"github.com/techschool/simplebank/util"
+	"github.com/lancer2672/BookingAppSubServer/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -16,7 +15,7 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server and set up routing.
-func NewServer(config util.Config, store *gorm.DB) (*Server, error) {
+func NewServer(config utils.Config, store *gorm.DB) (*Server, error) {
 	// tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	// if err != nil {
 	// 	return nil, fmt.Errorf("cannot create token maker: %w", err)
