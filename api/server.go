@@ -40,6 +40,9 @@ func (server *Server) setupRouter() {
 		ctx.JSON(http.StatusOK, "OK")
 	})
 	router.PATCH("/api/booking", server.updateBookingStatus)
+	router.GET("/api/bookings/:userId", server.getListBookingByUserId)
+	router.GET("/api/booking/:bookingId", server.getById)
+
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
 
 	// authRoutes.POST("/transfers", server.createTransfer)

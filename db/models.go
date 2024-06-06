@@ -11,17 +11,22 @@ type Timetz struct {
 	time.Time
 }
 
-const timetzLayout = "15:04:05-07:00"
+const timetzLayout = "15:04:05.999999-07"
 
 func (t *Timetz) Scan(value interface{}) error {
-	v, ok := value.(time.Time)
+	strVal, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("cannot convert %v to Timetz", value)
 	}
-	*t = Timetz{Time: v}
+
+	parsedTime, err := time.Parse(timetzLayout, strVal)
+	if err != nil {
+		return fmt.Errorf("error parsing Timetz: %v", err)
+	}
+
+	*t = Timetz{Time: parsedTime}
 	return nil
 }
-
 func (t Timetz) Value() (driver.Value, error) {
 	return t.Time.Format(timetzLayout), nil
 }
@@ -108,9 +113,9 @@ type T_Bookings struct {
 	Fk_User_Id  uint      `gorm:"not null" json:"fk_user_id"`
 	Fk_Room_Id  uint      `gorm:"not null" json:"fk_room_id"`
 	Status      string    `gorm:"type:varchar(50)" json:"status"`
-	Start_Date  Timetz    `json:"start_date"`
-	End_Date    Timetz    `json:"end_date"`
-	Created_At  time.Time ` json:"created_at"`
+	Start_Date  time.Time ` json:"start_date"`
+	End_Date    time.Time ` json:"end_date"`
+	Create_At   time.Time ` json:"create_at"`
 	Total_Price float64   `gorm:"not null" json:"total_price"`
 }
 
