@@ -2,115 +2,146 @@ package db
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
 	"time"
 )
 
-// BaseModel struct definition with common fields
-type BaseModel struct {
-	ID        uint      `gorm:"primaryKey"`
-	CreatedAt time.Time `gorm:"autoCreateTime"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+type Timetz struct {
+	time.Time
 }
 
-// User struct definition with embedded BaseModel
-type User struct {
-	BaseModel
-	FirstName   string  `gorm:"type:varchar(100)"`
-	LastName    string  `gorm:"type:varchar(100)"`
-	Email       *string `gorm:"type:varchar(100);uniqueIndex"`
-	PhoneNumber string  `gorm:"type:varchar(15)"`
-	Role        string  `gorm:"type:varchar(50)"`
-	Avatar      string  `gorm:"type:varchar(255)"`
-	Status      string  `gorm:"type:varchar(50)"`
-	Password    string  `gorm:"type:varchar(255)"`
+const timetzLayout = "15:04:05-07:00"
+
+func (t *Timetz) Scan(value interface{}) error {
+	v, ok := value.(time.Time)
+	if !ok {
+		return fmt.Errorf("cannot convert %v to Timetz", value)
+	}
+	*t = Timetz{Time: v}
+	return nil
 }
 
-// Property struct definition with embedded BaseModel
-type Property struct {
-	BaseModel
-	Name         string         `gorm:"type:varchar(100)"`
-	FkWardId     uint           `gorm:"not null"`
-	FkDistrictId uint           `gorm:"not null"`
-	FkProvinceId uint           `gorm:"not null"`
-	Description  sql.NullString `gorm:"type:text"`
-	Longitude    sql.NullFloat64
-	Latitude     sql.NullFloat64
-	Address      string `gorm:"type:varchar(255)"`
-	FkAgentId    uint   `gorm:"not null"`
-	Status       string `gorm:"type:varchar(50)"`
-	Type         string `gorm:"type:varchar(50)"`
+func (t Timetz) Value() (driver.Value, error) {
+	return t.Time.Format(timetzLayout), nil
 }
 
-// Room struct definition with embedded BaseModel
-type Room struct {
-	BaseModel
-	FkPropertyId uint   `gorm:"not null"`
-	Name         string `gorm:"type:varchar(100)"`
-	Status       string `gorm:"type:varchar(50)"`
-	Price        uint   `gorm:"not null"`
+// User struct definition with embedded
+type T_Users struct {
+	Id           uint    `json:"id"`
+	First_Name   string  `gorm:"type:varchar(100)" json:"first_name"`
+	Last_Name    string  `gorm:"type:varchar(100)" json:"last_name"`
+	Email        *string `gorm:"type:varchar(100);uniqueIndex" json:"email"`
+	Phone_Number string  `gorm:"type:varchar(15)" json:"phone_number"`
+	Role         string  `gorm:"type:varchar(50)" json:"role"`
+	Avatar       string  `gorm:"type:varchar(255)" json:"avatar"`
+	Status       string  `gorm:"type:varchar(50)" json:"status"`
+	Password     string  `gorm:"type:varchar(255)" json:"password"`
 }
 
-// Amenity struct definition with embedded BaseModel
-type Amenity struct {
-	BaseModel
-	Name      string `gorm:"type:varchar(100)"`
-	Type      string `gorm:"type:varchar(50)"`
-	IsDeleted bool   `gorm:"default:false"`
+type T_Argents struct {
+	Id                  uint   `json:"id"`
+	Fk_User_Id          uint   `json:"fk_user_id"`
+	Identity_Number     string `gorm:"type:varchar(15)" json:"identity_number"`
+	Front_Identity_Card string `gorm:"type:varchar(15)" json:"front_identity_card"`
+	Back_Identity_Card  string `gorm:"type:varchar(15)" json:"back_identity_card"`
+	Selfie_Img          string `gorm:"type:varchar(15)" json:"selfie_img"`
 }
 
-// RoomImage struct definition with embedded BaseModel
-type RoomImage struct {
-	BaseModel
-	Url      string `gorm:"type:varchar(255)"`
-	FkRoomId uint   `gorm:"not null"`
+// Property struct definition with embedded
+type T_Properties struct {
+	Id             uint            `json:"id"`
+	Name           string          `gorm:"type:varchar(100)" json:"name"`
+	Fk_Ward_Id     uint            `gorm:"not null" json:"fk_ward_id"`
+	Fk_District_Id uint            `gorm:"not null" json:"fk_district_id"`
+	Fk_Province_Id uint            `gorm:"not null" json:"fk_province_id"`
+	Description    sql.NullString  `gorm:"type:text" json:"description"`
+	Longitude      sql.NullFloat64 `json:"longitude"`
+	Latitude       sql.NullFloat64 `json:"latitude"`
+	Address        string          `gorm:"type:varchar(255)" json:"address"`
+	Fk_Agent_Id    uint            `gorm:"not null" json:"fk_agent_id"`
+	Status         string          `gorm:"type:varchar(50)" json:"status"`
+	Type           string          `gorm:"type:varchar(50)" json:"type"`
 }
 
-// PropertyAmenity struct definition with embedded BaseModel
-type PropertyAmenity struct {
-	BaseModel
-	FkPropertyId uint `gorm:"not null"`
-	FkAmenityId  uint `gorm:"not null"`
+// Room struct definition with embedded
+type T_Rooms struct {
+	Id             uint   `json:"id"`
+	Fk_Property_Id uint   `gorm:"not null" json:"fk_property_id"`
+	Name           string `gorm:"type:varchar(100)" json:"name"`
+	Status         string `gorm:"type:varchar(50)" json:"status"`
+	Price          uint   `gorm:"not null" json:"price"`
 }
 
-// PropertyImage struct definition with embedded BaseModel
-type PropertyImage struct {
-	BaseModel
-	Url          string `gorm:"type:varchar(255)"`
-	FkPropertyId uint   `gorm:"not null"`
+// Amenity struct definition with embedded
+type T_Amenities struct {
+	Id         uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name       string `gorm:"type:varchar(100)" json:"name"`
+	Type       string `gorm:"type:varchar(50)" json:"type"`
+	Is_Deleted bool   `gorm:"default:false" json:"is_deleted"`
 }
 
-// Booking struct definition with embedded BaseModel
-type Booking struct {
-	BaseModel
-	FkUserId   uint      `gorm:"not null"`
-	FkRoomId   uint      `gorm:"not null"`
-	Status     string    `gorm:"type:varchar(50)"`
-	StartDate  time.Time `gorm:"not null"`
-	EndDate    time.Time `gorm:"not null"`
-	TotalPrice float64   `gorm:"not null"`
+// RoomImage struct definition with embedded
+type T_Room_Images struct {
+	Id         uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	Url        string `gorm:"type:varchar(255)" json:"url"`
+	Fk_Room_Id uint   `gorm:"not null" json:"fk_room_id"`
 }
 
-// Province struct definition with embedded BaseModel
-type Province struct {
-	BaseModel
-	ProvinceName string `gorm:"type:varchar(100)"`
-	ProvinceType string `gorm:"type:varchar(50)"`
+// PropertyAmenity struct definition with embedded
+type T_Property_Amenities struct {
+	Id             uint `gorm:"primaryKey;autoIncrement" json:"id"`
+	Fk_Property_Id uint `gorm:"not null" json:"fk_property_id"`
+	Fk_Amenity_Id  uint `gorm:"not null" json:"fk_amenity_id"`
 }
 
-// District struct definition with embedded BaseModel
-type District struct {
-	BaseModel
-	DistrictName string `gorm:"type:varchar(100)"`
-	DistrictType string `gorm:"type:varchar(50)"`
-	Latitude     float64
-	Longitude    float64
-	ProvinceId   uint `gorm:"not null"`
+// PropertyImage struct definition with embedded
+type T_Property_Images struct {
+	Id             uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	Url            string `gorm:"type:varchar(255)" json:"url"`
+	Fk_Property_Id uint   `gorm:"not null" json:"fk_property_id"`
 }
 
-// Ward struct definition with embedded BaseModel
-type Ward struct {
-	BaseModel
-	WardName     string `gorm:"type:varchar(100)"`
-	WardType     string `gorm:"type:varchar(50)"`
-	FkDistrictId uint   `gorm:"not null"`
+// Booking struct definition with embedded
+type T_Bookings struct {
+	Id          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	Fk_User_Id  uint      `gorm:"not null" json:"fk_user_id"`
+	Fk_Room_Id  uint      `gorm:"not null" json:"fk_room_id"`
+	Status      string    `gorm:"type:varchar(50)" json:"status"`
+	Start_Date  Timetz    `json:"start_date"`
+	End_Date    Timetz    `json:"end_date"`
+	Created_At  time.Time ` json:"created_at"`
+	Total_Price float64   `gorm:"not null" json:"total_price"`
+}
+
+// Province struct definition with embedded
+type T_Provinces struct {
+	Id            uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	Province_Name string `gorm:"type:varchar(100)" json:"province_name"`
+	Province_Type string `gorm:"type:varchar(50)" json:"province_type"`
+}
+
+// District struct definition with embedded
+type T_Districts struct {
+	Id            uint    `gorm:"primaryKey;autoIncrement" json:"id"`
+	District_Name string  `gorm:"type:varchar(100)" json:"district_name"`
+	District_Type string  `gorm:"type:varchar(50)" json:"district_type"`
+	Latitude      float64 `json:"latitude"`
+	Longitude     float64 `json:"longitude"`
+	Province_Id   uint    `gorm:"not null" json:"province_id"`
+}
+
+// Ward struct definition with embedded
+type T_Wards struct {
+	Id             uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	Ward_Name      string `gorm:"type:varchar(100)" json:"ward_name"`
+	Ward_Type      string `gorm:"type:varchar(50)" json:"ward_type"`
+	Fk_District_Id uint   `gorm:"not null" json:"fk_district_id"`
+}
+
+type T_User_Web_Session struct {
+	Id             uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	Ward_Name      string `gorm:"type:varchar(100)" json:"ward_name"`
+	Ward_Type      string `gorm:"type:varchar(50)" json:"ward_type"`
+	Fk_District_Id uint   `gorm:"not null" json:"fk_district_id"`
 }

@@ -5,8 +5,13 @@ const (
 	HotelStatusDeleted   = "DELETED"
 	HotelStatusRepairing = "REPAIRING"
 
-	BookingStatus_NotCheckIn  = "NOTCHECKIN"
-	BookingStatus_NotCheckOut = "NOTCHECKOUT"
-	BookingStatus_Canceled    = "CANCELED"
-	BookingStatus_CheckOut    = "CHECKOUT"
+	RoomStatusAvaiable     = "AVAILABLE"
+	RoomStatusDeleted      = "DELETED"
+	RoomStatusNotAvailable = "NOTAVAILABLE"
+
+	BookingStatus_Pending   = "PENDING"
+	BookingStatus_Confirmed = "CONFIRMED"
+	BookingStatus_Canceled  = "CANCELED"
+	BookingStatus_CheckIn   = "CHECKIN"
+	BookingStatus_CheckOut  = "CHECKOUT"
 )

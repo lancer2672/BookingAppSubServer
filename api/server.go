@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/lancer2672/BookingAppSubServer/internal/utils"
 	"gorm.io/gorm"
@@ -33,14 +35,12 @@ func NewServer(config utils.Config, store *gorm.DB) (*Server, error) {
 func (server *Server) setupRouter() {
 	router := gin.Default()
 
-	// router.POST("/users", server.createUser)
-	// router.POST("/users/login", server.loginUser)
+	router.POST("/api/booking", server.createBooking)
+	router.GET("/healthcheck", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, "OK")
+	})
+	router.PATCH("/api/booking", server.updateBookingStatus)
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
-
-	// authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
-	// authRoutes.POST("/accounts", server.createAccount)
-	// authRoutes.GET("/accounts/:id", server.getAccount)
-	// authRoutes.GET("/accounts", server.listAccounts)
 
 	// authRoutes.POST("/transfers", server.createTransfer)
 
