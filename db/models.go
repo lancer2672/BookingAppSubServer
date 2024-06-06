@@ -28,26 +28,26 @@ type User struct {
 // Property struct definition with embedded BaseModel
 type Property struct {
 	BaseModel
-	Name        string         `gorm:"type:varchar(100)"`
-	WardId      uint           `gorm:"not null"`
-	DistrictId  uint           `gorm:"not null"`
-	ProvinceId  uint           `gorm:"not null"`
-	Description sql.NullString `gorm:"type:text"`
-	Longitude   sql.NullFloat64
-	Latitude    sql.NullFloat64
-	Address     string `gorm:"type:varchar(255)"`
-	AgentId     uint   `gorm:"not null"`
-	Status      string `gorm:"type:varchar(50)"`
-	Type        string `gorm:"type:varchar(50)"`
+	Name         string         `gorm:"type:varchar(100)"`
+	FkWardId     uint           `gorm:"not null"`
+	FkDistrictId uint           `gorm:"not null"`
+	FkProvinceId uint           `gorm:"not null"`
+	Description  sql.NullString `gorm:"type:text"`
+	Longitude    sql.NullFloat64
+	Latitude     sql.NullFloat64
+	Address      string `gorm:"type:varchar(255)"`
+	FkAgentId    uint   `gorm:"not null"`
+	Status       string `gorm:"type:varchar(50)"`
+	Type         string `gorm:"type:varchar(50)"`
 }
 
 // Room struct definition with embedded BaseModel
 type Room struct {
 	BaseModel
-	PropertyId uint   `gorm:"not null"`
-	Name       string `gorm:"type:varchar(100)"`
-	Status     string `gorm:"type:varchar(50)"`
-	Price      uint   `gorm:"not null"`
+	FkPropertyId uint   `gorm:"not null"`
+	Name         string `gorm:"type:varchar(100)"`
+	Status       string `gorm:"type:varchar(50)"`
+	Price        uint   `gorm:"not null"`
 }
 
 // Amenity struct definition with embedded BaseModel
@@ -61,29 +61,29 @@ type Amenity struct {
 // RoomImage struct definition with embedded BaseModel
 type RoomImage struct {
 	BaseModel
-	Url    string `gorm:"type:varchar(255)"`
-	RoomId uint   `gorm:"not null"`
+	Url      string `gorm:"type:varchar(255)"`
+	FkRoomId uint   `gorm:"not null"`
 }
 
 // PropertyAmenity struct definition with embedded BaseModel
 type PropertyAmenity struct {
 	BaseModel
-	PropertyId uint `gorm:"not null"`
-	AmenityId  uint `gorm:"not null"`
+	FkPropertyId uint `gorm:"not null"`
+	FkAmenityId  uint `gorm:"not null"`
 }
 
 // PropertyImage struct definition with embedded BaseModel
 type PropertyImage struct {
 	BaseModel
-	Url        string `gorm:"type:varchar(255)"`
-	PropertyId uint   `gorm:"not null"`
+	Url          string `gorm:"type:varchar(255)"`
+	FkPropertyId uint   `gorm:"not null"`
 }
 
 // Booking struct definition with embedded BaseModel
 type Booking struct {
 	BaseModel
-	UserId     uint      `gorm:"not null"`
-	RoomId     uint      `gorm:"not null"`
+	FkUserId   uint      `gorm:"not null"`
+	FkRoomId   uint      `gorm:"not null"`
 	Status     string    `gorm:"type:varchar(50)"`
 	StartDate  time.Time `gorm:"not null"`
 	EndDate    time.Time `gorm:"not null"`
@@ -110,7 +110,7 @@ type District struct {
 // Ward struct definition with embedded BaseModel
 type Ward struct {
 	BaseModel
-	WardName   string `gorm:"type:varchar(100)"`
-	WardType   string `gorm:"type:varchar(50)"`
-	DistrictId uint   `gorm:"not null"`
+	WardName     string `gorm:"type:varchar(100)"`
+	WardType     string `gorm:"type:varchar(50)"`
+	FkDistrictId uint   `gorm:"not null"`
 }
