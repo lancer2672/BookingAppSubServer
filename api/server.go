@@ -34,7 +34,7 @@ func NewServer(config utils.Config, store *gorm.DB) (*Server, error) {
 
 func (server *Server) setupRouter() {
 	router := gin.Default()
-
+	router.StaticFS("/uploads", gin.Dir("./uploads", true))
 	router.POST("/api/bookings", server.createBooking)
 	router.GET("/healthcheck", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "OK")
@@ -46,6 +46,9 @@ func (server *Server) setupRouter() {
 
 	router.POST("api/hotels", server.createHotel)
 	router.GET("api/hotels/:agentId", server.getHotelsByAgent)
+
+	router.GET("api/rooms/:propertyId", server.getListRoomByHotelId)
+	router.POST("api/rooms/", server.createRoom)
 
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
 
