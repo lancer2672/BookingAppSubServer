@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/lancer2672/BookingAppSubServer/db"
+	"github.com/lancer2672/BookingAppSubServer/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,10 +57,11 @@ func (server *Server) createRoom(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
+		fullPath := fmt.Sprintf("%s/%s", utils.URL_API, filePath)
+		imagePath := &fullPath
 		// Create room image record in the database
 		roomImage := db.T_Room_Images{
-			Url:        filePath,
+			Url:        *imagePath,
 			Fk_Room_Id: room.Id,
 		}
 		if err := server.store.Create(&roomImage).Error; err != nil {

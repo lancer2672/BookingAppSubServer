@@ -84,6 +84,17 @@ type T_Booking_Deposits struct {
 	Deposit       float64 `gorm:"not null" json:"deposit"`
 }
 
+type T_Banks struct {
+	ID             uint      `json:"id"`
+	Bank_Name      string    `" json:"bank_name"`
+	Account_Number string    ` json:"image"`
+	QR_Code        *string   ` json:"deposit"`
+	Fk_Argent_Id   uint      `json:"fk_argent_id"`
+	Is_Default     bool      `json:"is_default"`
+	Create_At      time.Time `json:"create_at"`
+	Account_Name   string    ` json:"account_name"`
+}
+
 // Amenity struct definition with embedded
 type T_Amenities struct {
 	Id         uint   `gorm:"primaryKey;autoIncrement" json:"id"`

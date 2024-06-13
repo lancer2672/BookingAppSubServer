@@ -52,6 +52,10 @@ func (server *Server) setupRouter() {
 	router.POST("api/rooms/", server.createRoom)
 	router.DELETE("api/rooms/:roomId", server.deleteRoom)
 
+	router.POST("api/banks/", server.CreateBankAccount)
+	router.PUT("api/banks/:bankId", server.updateBankAccount)
+	router.GET("api/banks/:agentId", server.GetListAccountByAgentId)
+
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
 
 	// authRoutes.POST("/transfers", server.createTransfer)

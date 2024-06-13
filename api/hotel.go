@@ -132,7 +132,6 @@ func (server *Server) createBooking(ctx *gin.Context) {
 
 		for _, file := range files {
 			filePath := fmt.Sprintf("uploads/%s", file.Filename) // Customize this path as needed
-
 			deposit := db.T_Booking_Deposits{
 				Fk_Booking_ID: booking.Id,
 				Deposit:       req.Deposit,
@@ -144,7 +143,11 @@ func (server *Server) createBooking(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 				return
 			}
-			deposit.Image = &filePath
+
+			fullPath := fmt.Sprintf("%s/%s", utils.URL_API, filePath)
+			imagePath := &fullPath
+
+			deposit.Image = imagePath
 			if err := tx.Create(&deposit).Error; err != nil {
 				tx.Rollback()
 				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
@@ -526,9 +529,12 @@ func (server *Server) createHotel(ctx *gin.Context) {
 			return
 		}
 
+		fullPath := fmt.Sprintf("%s/%s", utils.URL_API, filePath)
+		imagePath := &fullPath
+
 		// Create property image record in the database
 		propertyImage := db.T_Property_Images{
-			Url:            filePath,
+			Url:            *imagePath,
 			Fk_Property_Id: hotel.Id,
 		}
 		if err := server.store.Create(&propertyImage).Error; err != nil {
@@ -664,7 +670,7 @@ func (server *Server) getHotelsByAgent(ctx *gin.Context) {
 		return
 	}
 
-	var hotels []HotelResponse
+	var hotels = []HotelResponse{}
 
 	// Query properties for the given agentId
 	var properties []db.T_Properties
@@ -713,7 +719,7 @@ func (server *Server) getHotelsByAgent(ctx *gin.Context) {
 				Select("t_room_images.id, t_room_images.url ").
 				Where("t_room_images.fk_room_id = ?", dbRoom.Id).
 				Find(&roomImages).Error; err != nil {
-				continue // Skip this room if room amenities cannot be fetched
+				continue // Skip this	 room if room amenities cannot be fetched
 			}
 			room.RoomImages = roomImages
 			fmt.Printf("ROOM%+v \n", roomAmenities)
