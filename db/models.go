@@ -80,7 +80,7 @@ type T_Rooms struct {
 type T_Booking_Deposit struct {
 	ID            uint    `json:"id"`
 	Fk_Booking_ID uint    `gorm:"not null" json:"fk_booking_id"`
-	Image         string  `gorm:"type:varchar(255)" json:"image"`
+	Image         *string `gorm:"type:varchar(255)" json:"image"`
 	Deposit       float64 `gorm:"not null" json:"deposit"`
 }
 
@@ -115,13 +115,14 @@ type T_Property_Images struct {
 
 // Booking struct definition with embedded
 type T_Bookings struct {
-	Id          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	Fk_User_Id  uint      `gorm:"not null" json:"fk_user_id"`
-	Status      string    `gorm:"type:varchar(50)" json:"status"`
-	Start_Date  time.Time ` json:"start_date"`
-	End_Date    time.Time ` json:"end_date"`
-	Create_At   time.Time ` json:"create_at"`
-	Total_Price float64   `gorm:"not null" json:"total_price"`
+	Id             uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	Fk_User_Id     uint      `gorm:"not null" json:"fk_user_id"`
+	Status         string    `gorm:"type:varchar(50)" json:"status"`
+	Start_Date     time.Time ` json:"start_date"`
+	End_Date       time.Time ` json:"end_date"`
+	Create_At      time.Time ` json:"create_at"`
+	Total_Price    float64   `gorm:"not null" json:"total_price"`
+	Fk_Property_Id uint      `gorm:"not null" json:"fk_property_id"`
 }
 type T_Booking_Rooms struct {
 	Id            uint ` json:"id"`

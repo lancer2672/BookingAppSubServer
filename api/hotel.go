@@ -19,7 +19,7 @@ type bookingRequest struct {
 	StartDate    time.Time `json:"startDate"`
 	EndDate      time.Time `json:"endDate"`
 	Deposit      float64   `json:"deposit"`
-	DepositImage string    `json:"depositImage"` // Note: This should be string for image URL
+	DepositImage *string   `json:"depositImage"`
 }
 
 type updateStatusRequest struct {
@@ -46,6 +46,23 @@ func (server *Server) createBooking(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
+		// Check room availability within the requested time frame
+		var overlappingBookings []db.T_Bookings
+		if err := tx.Joins("JOIN t_booking_rooms ON t_booking_rooms.fk_booking_id = t_bookings.id").
+			Where("t_booking_rooms.fk_room_id = ? AND ((t_bookings.start_date, t_bookings.end_date) OVERLAPS (?, ?))", room.Id, req.StartDate, req.EndDate).
+			Find(&overlappingBookings).Error; err != nil {
+			tx.Rollback()
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		// Handle overlapping booking scenario
+		if len(overlappingBookings) > 0 {
+			tx.Rollback()
+			ctx.JSON(http.StatusConflict, gin.H{"error": "Room already booked within this time frame"})
+			return
+		}
+
 		if room.Status != utils.RoomStatusAvaiable {
 			tx.Rollback()
 			ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("room %d not available", roomId)))
@@ -74,12 +91,13 @@ func (server *Server) createBooking(ctx *gin.Context) {
 		status = utils.BookingStatus_Pending
 	}
 	booking := db.T_Bookings{
-		Fk_User_Id:  req.UserId,
-		Status:      status,
-		Start_Date:  req.StartDate,
-		End_Date:    req.EndDate,
-		Create_At:   time.Now(),
-		Total_Price: totalPrice,
+		Fk_User_Id:     req.UserId,
+		Status:         status,
+		Start_Date:     req.StartDate,
+		End_Date:       req.EndDate,
+		Create_At:      time.Now(),
+		Fk_Property_Id: property.Id,
+		Total_Price:    totalPrice,
 	}
 
 	if err := tx.Create(&booking).Error; err != nil {
@@ -87,7 +105,17 @@ func (server *Server) createBooking(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
+	for _, roomId := range req.RoomIds {
+		bookingRoom := &db.T_Booking_Rooms{
+			Fk_Room_Id:    roomId,
+			Fk_Booking_id: booking.Id,
+		}
+		if err := tx.Create(&bookingRoom).Error; err != nil {
+			tx.Rollback()
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+	}
 	// Create booking deposit record if deposit is provided
 	if req.Deposit != 0 {
 		deposit := db.T_Booking_Deposit{
@@ -213,7 +241,7 @@ func (server *Server) getListBookingByUserId(ctx *gin.Context) {
 			Rooms:       roomInfos,
 			Deposit: BookingDepositInfo{
 				ID:      deposit.ID,
-				Image:   deposit.Image,
+				Image:   *deposit.Image,
 				Deposit: deposit.Deposit,
 			},
 			Property: propertyInfo,
@@ -307,7 +335,7 @@ func (server *Server) getListBookingByAgentId(ctx *gin.Context) {
 			if depositExists {
 				bookingResponse.Deposit = BookingDepositInfo{
 					ID:      deposit.ID,
-					Image:   deposit.Image,
+					Image:   *deposit.Image,
 					Deposit: deposit.Deposit,
 				}
 			}
