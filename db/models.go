@@ -77,7 +77,7 @@ type T_Rooms struct {
 	Status         string `gorm:"type:varchar(50)" json:"status"`
 	Price          uint   `gorm:"not null" json:"price"`
 }
-type T_Booking_Deposit struct {
+type T_Booking_Deposits struct {
 	ID            uint    `json:"id"`
 	Fk_Booking_ID uint    `gorm:"not null" json:"fk_booking_id"`
 	Image         *string `gorm:"type:varchar(255)" json:"image"`

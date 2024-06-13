@@ -118,7 +118,7 @@ func (server *Server) createBooking(ctx *gin.Context) {
 	}
 	// Create booking deposit record if deposit is provided
 	if req.Deposit != 0 {
-		deposit := db.T_Booking_Deposit{
+		deposit := db.T_Booking_Deposits{
 			Fk_Booking_ID: booking.Id,
 			Deposit:       req.Deposit,
 			Image:         req.DepositImage,
@@ -163,16 +163,16 @@ type PropertyInfo struct {
 	Type           string  `json:"type"`
 }
 type BookingResponse struct {
-	Id          uint               `json:"id"`
-	Fk_User_Id  uint               `json:"userId"`
-	Status      string             `json:"status"`
-	Start_Date  time.Time          `json:"startDate"`
-	End_Date    time.Time          `json:"endDate"`
-	Create_At   time.Time          `json:"createAt"`
-	Total_Price float64            `json:"totalPrice"`
-	Rooms       []RoomInfo         `json:"rooms"`
-	Deposit     BookingDepositInfo `json:"deposit,omitempty"`
-	Property    PropertyInfo       `json:"property"`
+	Id          uint                `json:"id"`
+	Fk_User_Id  uint                `json:"userId"`
+	Status      string              `json:"status"`
+	Start_Date  time.Time           `json:"startDate"`
+	End_Date    time.Time           `json:"endDate"`
+	Create_At   time.Time           `json:"createAt"`
+	Total_Price float64             `json:"totalPrice"`
+	Rooms       []RoomInfo          `json:"rooms"`
+	Deposit     *BookingDepositInfo `json:"deposit,omitempty"`
+	Property    PropertyInfo        `json:"property"`
 }
 
 func (server *Server) getListBookingByUserId(ctx *gin.Context) {
@@ -204,10 +204,14 @@ func (server *Server) getListBookingByUserId(ctx *gin.Context) {
 			})
 		}
 
-		var deposit db.T_Booking_Deposit
-		if err := server.store.Where("fk_booking_id = ?", booking.Id).First(&deposit).Error; err != nil {
-			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-			return
+		var deposit db.T_Booking_Deposits
+		var depositResponse *BookingDepositInfo = nil
+		if err := server.store.Where("fk_booking_id = ?", booking.Id).First(&deposit).Error; err == nil {
+			depositResponse = &BookingDepositInfo{
+				ID:      deposit.ID,
+				Image:   *deposit.Image,
+				Deposit: deposit.Deposit,
+			}
 		}
 
 		var property db.T_Properties
@@ -239,12 +243,8 @@ func (server *Server) getListBookingByUserId(ctx *gin.Context) {
 			Create_At:   booking.Create_At,
 			Total_Price: booking.Total_Price,
 			Rooms:       roomInfos,
-			Deposit: BookingDepositInfo{
-				ID:      deposit.ID,
-				Image:   *deposit.Image,
-				Deposit: deposit.Deposit,
-			},
-			Property: propertyInfo,
+			Deposit:     depositResponse,
+			Property:    propertyInfo,
 		}
 
 		bookingResponses = append(bookingResponses, bookingResponse)
@@ -258,7 +258,7 @@ func (server *Server) getListBookingByAgentId(ctx *gin.Context) {
 
 	// 1. Retrieve properties by AgentId
 	var properties []db.T_Properties
-	if err := server.store.Where("fk_agent_id = ?", agentId).Find(&properties).Error; err != nil {
+	if err := server.store.Where("fk_argent_id = ?", agentId).Find(&properties).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
@@ -279,8 +279,8 @@ func (server *Server) getListBookingByAgentId(ctx *gin.Context) {
 		}
 
 		for _, booking := range bookings {
-			// 3. Retrieve corresponding T_Booking_Deposit (if it exists)
-			var deposit db.T_Booking_Deposit
+			// 3. Retrieve corresponding T_Booking_Deposits (if it exists)
+			var deposit db.T_Booking_Deposits
 			depositExists := server.store.Where("fk_booking_id = ?", booking.Id).First(&deposit).RowsAffected > 0
 
 			// 4. Retrieve corresponding T_Booking_Rooms
@@ -333,7 +333,7 @@ func (server *Server) getListBookingByAgentId(ctx *gin.Context) {
 			}
 
 			if depositExists {
-				bookingResponse.Deposit = BookingDepositInfo{
+				bookingResponse.Deposit = &BookingDepositInfo{
 					ID:      deposit.ID,
 					Image:   *deposit.Image,
 					Deposit: deposit.Deposit,
