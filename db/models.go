@@ -77,6 +77,12 @@ type T_Rooms struct {
 	Status         string `gorm:"type:varchar(50)" json:"status"`
 	Price          uint   `gorm:"not null" json:"price"`
 }
+type T_Booking_Deposit struct {
+	ID            uint    `json:"id"`
+	Fk_Booking_ID uint    `gorm:"not null" json:"fk_booking_id"`
+	Image         string  `gorm:"type:varchar(255)" json:"image"`
+	Deposit       float64 `gorm:"not null" json:"deposit"`
+}
 
 // Amenity struct definition with embedded
 type T_Amenities struct {
@@ -111,12 +117,16 @@ type T_Property_Images struct {
 type T_Bookings struct {
 	Id          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	Fk_User_Id  uint      `gorm:"not null" json:"fk_user_id"`
-	Fk_Room_Id  uint      `gorm:"not null" json:"fk_room_id"`
 	Status      string    `gorm:"type:varchar(50)" json:"status"`
 	Start_Date  time.Time ` json:"start_date"`
 	End_Date    time.Time ` json:"end_date"`
 	Create_At   time.Time ` json:"create_at"`
 	Total_Price float64   `gorm:"not null" json:"total_price"`
+}
+type T_Booking_Rooms struct {
+	Id            uint ` json:"id"`
+	Fk_Room_Id    uint `gorm:"not null" json:"fk_room_id"`
+	Fk_Booking_id uint `gorm:"not null" json:"fk_booking_id"`
 }
 
 // Province struct definition with embedded
