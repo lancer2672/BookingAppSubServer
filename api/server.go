@@ -35,13 +35,14 @@ func NewServer(config utils.Config, store *gorm.DB) (*Server, error) {
 func (server *Server) setupRouter() {
 	router := gin.Default()
 
-	router.POST("/api/booking", server.createBooking)
+	router.POST("/api/bookings", server.createBooking)
 	router.GET("/healthcheck", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "OK")
 	})
-	router.PATCH("/api/booking", server.updateBookingStatus)
-	router.GET("/api/bookings/:userId", server.getListBookingByUserId)
-	router.GET("/api/booking/:bookingId", server.getById)
+	router.PATCH("/api/bookings", server.updateBookingStatus)
+	router.GET("/api/bookings/user/:userId", server.getListBookingByUserId)
+	router.GET("/api/bookings/agent/:agentId", server.getListBookingByAgentId)
+	router.GET("/api/bookings/:bookingId", server.getById)
 
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
 
