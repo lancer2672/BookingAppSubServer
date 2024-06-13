@@ -56,6 +56,9 @@ func (server *Server) setupRouter() {
 	router.PUT("api/banks/:bankId", server.updateBankAccount)
 	router.GET("api/banks/:agentId", server.GetListAccountByAgentId)
 
+	router.GET("api/staffs/:agentId", server.GetStaffByAgentId)
+	router.POST("api/staffs", server.CreateStaff)
+
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
 
 	// authRoutes.POST("/transfers", server.createTransfer)
