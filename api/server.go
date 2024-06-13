@@ -44,6 +44,9 @@ func (server *Server) setupRouter() {
 	router.GET("/api/bookings/agent/:agentId", server.getListBookingByAgentId)
 	router.GET("/api/bookings/:bookingId", server.getById)
 
+	router.POST("api/hotels", server.createHotel)
+	router.GET("api/hotels/:agentId", server.getHotelsByAgent)
+
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
 
 	// authRoutes.POST("/transfers", server.createTransfer)

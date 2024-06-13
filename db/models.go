@@ -64,7 +64,7 @@ type T_Properties struct {
 	Longitude      sql.NullFloat64 `json:"longitude"`
 	Latitude       sql.NullFloat64 `json:"latitude"`
 	Address        string          `gorm:"type:varchar(255)" json:"address"`
-	Fk_Agent_Id    uint            `gorm:"not null" json:"fk_agent_id"`
+	Fk_Argent_Id   uint            `gorm:"not null" json:"fk_argent_id"`
 	Status         string          `gorm:"type:varchar(50)" json:"status"`
 	Type           string          `gorm:"type:varchar(50)" json:"type"`
 }
@@ -97,6 +97,13 @@ type T_Room_Images struct {
 	Id         uint   `gorm:"primaryKey;autoIncrement" json:"id"`
 	Url        string `gorm:"type:varchar(255)" json:"url"`
 	Fk_Room_Id uint   `gorm:"not null" json:"fk_room_id"`
+}
+
+// PropertyAmenity struct definition with embedded
+type T_Room_Amenities struct {
+	Id            uint `gorm:"primaryKey;autoIncrement" json:"id"`
+	Fk_Room_Id    uint `gorm:"not null" json:"fk_room_id"`
+	Fk_Amenity_Id uint `gorm:"not null" json:"fk_amenity_id"`
 }
 
 // PropertyAmenity struct definition with embedded

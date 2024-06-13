@@ -1,8 +1,10 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/lancer2672/BookingAppSubServer/db"
@@ -413,4 +415,267 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 	tx.Commit()
 
 	ctx.JSON(http.StatusOK, booking)
+}
+
+type createHotelRequest struct {
+	Name        string  `form:"name" binding:"required"`
+	WardId      uint    `form:"wardId" binding:"required"`
+	DistrictId  uint    `form:"districtId" binding:"required"`
+	ProvinceId  uint    `form:"provinceId" binding:"required"`
+	Description string  `form:"description"`
+	Longitude   float64 `form:"longitude" binding:"required"`
+	Latitude    float64 `form:"latitude" binding:"required"`
+	Address     string  `form:"address" binding:"required"`
+	AgentId     uint    `form:"agentId" binding:"required"`
+	Type        string  `form:"type" binding:"required"`
+	AmenityIds  []uint  `form:"amenityIds" binding:"required"`
+}
+
+type hotelResponse struct {
+	Id          uint    `json:"id"`
+	Name        string  `json:"name"`
+	WardId      uint    `json:"wardId"`
+	DistrictId  uint    `json:"districtId"`
+	ProvinceId  uint    `json:"provinceId"`
+	Description string  `json:"description"`
+	Longitude   float64 `json:"longitude"`
+	Latitude    float64 `json:"latitude"`
+	Address     string  `json:"address"`
+	AgentId     uint    `json:"agentId"`
+	Status      string  `json:"status"`
+	Type        string  `json:"type"`
+}
+
+func (server *Server) createHotel(ctx *gin.Context) {
+	var req createHotelRequest
+
+	// Parse the form data
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// Handle image uploads
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	files := form.File["images"]
+
+	hotel := db.T_Properties{
+		Name:           req.Name,
+		Fk_Ward_Id:     req.WardId,
+		Fk_District_Id: req.DistrictId,
+		Fk_Province_Id: req.ProvinceId,
+		Description:    sql.NullString{String: req.Description, Valid: req.Description != ""},
+		Longitude:      sql.NullFloat64{Float64: req.Longitude, Valid: true},
+		Latitude:       sql.NullFloat64{Float64: req.Latitude, Valid: true},
+		Address:        req.Address,
+		Fk_Argent_Id:   req.AgentId,
+		Status:         "AVAILABLE",
+		Type:           req.Type,
+	}
+
+	// Create hotel record in the database
+	if err := server.store.Create(&hotel).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// Save uploaded images
+	for _, file := range files {
+		filePath := fmt.Sprintf("uploads/%s", file.Filename) // Customize this path as needed
+
+		// Save the file locally
+		if err := ctx.SaveUploadedFile(file, filePath); err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		// Create property image record in the database
+		propertyImage := db.T_Property_Images{
+			Url:            filePath,
+			Fk_Property_Id: hotel.Id,
+		}
+		if err := server.store.Create(&propertyImage).Error; err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+	}
+	fmt.Println(">>>AmentiesIds", req.AmenityIds)
+	for _, amenityId := range req.AmenityIds {
+		propertyAmenity := db.T_Property_Amenities{
+			Fk_Property_Id: hotel.Id,
+			Fk_Amenity_Id:  amenityId,
+		}
+		if err := server.store.Create(&propertyAmenity).Error; err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+	}
+	ctx.JSON(http.StatusOK, hotelResponse{
+		Id:          hotel.Id,
+		Name:        hotel.Name,
+		WardId:      hotel.Fk_Ward_Id,
+		DistrictId:  hotel.Fk_District_Id,
+		ProvinceId:  hotel.Fk_Province_Id,
+		Description: hotel.Description.String,
+		Longitude:   hotel.Longitude.Float64,
+		Latitude:    hotel.Latitude.Float64,
+		Address:     hotel.Address,
+		AgentId:     hotel.Fk_Argent_Id,
+		Status:      hotel.Status,
+		Type:        hotel.Type,
+	})
+}
+
+// HotelResponse struct for hotel (property) response
+type HotelResponse struct {
+	ID             uint              `json:"id"`
+	Name           string            `json:"name"`
+	WardID         uint              `json:"wardId"`
+	DistrictID     uint              `json:"districtId"`
+	ProvinceID     uint              `json:"provinceId"`
+	Description    *string           `json:"description"`
+	Longitude      *float64          `json:"longitude"`
+	Latitude       *float64          `json:"latitude"`
+	Address        string            `json:"address"`
+	AgentID        uint              `json:"agentId"`
+	Status         string            `json:"status"`
+	Type           string            `json:"type"`
+	HotelAmenities []AmenityResponse `json:"amenities"`
+	HotelImages    []ImageResponse   `json:"images"`
+	HotelRooms     []RoomResponse    `json:"rooms"`
+}
+
+// RoomResponse struct for room response
+type RoomResponse struct {
+	ID            uint              `json:"id"`
+	PropertyID    uint              `json:"propertyId"`
+	Name          string            `json:"name"`
+	Status        string            `json:"status"`
+	Price         uint              `json:"price"`
+	RoomAmenities []AmenityResponse `json:"amenities"`
+	RoomImages    []ImageResponse   `json:"images"`
+}
+
+// AmenityResponse struct for amenity response
+type AmenityResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// ImageResponse struct for image response
+type ImageResponse struct {
+	ID  uint   `json:"id"`
+	Url string `json:"url"`
+}
+
+func (server *Server) getHotelsByAgent(ctx *gin.Context) {
+	agentID, err := strconv.Atoi(ctx.Param("agentId"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid agent ID"})
+		return
+	}
+
+	var hotels []HotelResponse
+
+	// Query properties for the given agentId
+	var properties []db.T_Properties
+	if err := server.store.Where("fk_argent_id = ? AND status <> ?", agentID, "DELETED").Find(&properties).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching hotels"})
+		return
+	}
+
+	// Iterate through each property (hotel)
+	for _, property := range properties {
+		var rooms = []RoomResponse{}
+
+		// Query rooms for the current hotel
+		var dbRooms []db.T_Rooms
+		if err := server.store.Where("fk_property_id = ?", property.Id).Find(&dbRooms).Error; err != nil {
+			fmt.Println("ERR", err)
+			continue // Skip this property if rooms cannot be fetched
+		}
+
+		// Map database rooms to RoomResponse structs
+		for _, dbRoom := range dbRooms {
+			room := RoomResponse{
+				ID:         dbRoom.Id,
+				PropertyID: dbRoom.Fk_Property_Id,
+				Name:       dbRoom.Name,
+				Status:     dbRoom.Status,
+				Price:      dbRoom.Price,
+			}
+
+			// Query room amenities
+			var roomAmenities []AmenityResponse
+			if err := server.store.Table("t_room_amenities").
+				Select("t_amenities.id, t_amenities.name , t_amenities.type").
+				Joins("JOIN t_amenities ON t_amenities.id = t_room_amenities.fk_amenity_id").
+				Where("t_amenities.is_deleted = ?", false).
+				Where("t_room_amenities.fk_room_id = ?", dbRoom.Id).
+				Find(&roomAmenities).Error; err != nil {
+				continue // Skip this room if room amenities cannot be fetched
+			}
+			fmt.Printf("%+v \n", roomAmenities)
+			room.RoomAmenities = roomAmenities
+
+			// Query room images
+			var roomImages []ImageResponse
+			if err := server.store.Table("t_room_images").
+				Select("t_room_images.id, t_room_images.url ").
+				Where("t_room_images.fk_room_id = ?", dbRoom.Id).
+				Find(&roomImages).Error; err != nil {
+				continue // Skip this room if room amenities cannot be fetched
+			}
+			room.RoomImages = roomImages
+			fmt.Printf("ROOM%+v \n", roomAmenities)
+
+			// Append room to rooms list
+			rooms = append(rooms, room)
+		}
+		var hotelImages []ImageResponse
+		if err := server.store.Table("t_property_images").
+			Select("t_property_images.id, t_property_images.url ").
+			Where("t_property_images.fk_property_id = ?", property.Id).
+			Find(&hotelImages).Error; err != nil {
+			continue // Skip this room if room amenities cannot be fetched
+		}
+		var hotelAmenities []AmenityResponse
+		if err := server.store.Table("t_property_amenities").
+			Select("t_amenities.id, t_amenities.name , t_amenities.type").
+			Joins("JOIN t_amenities ON t_amenities.id = t_property_amenities.fk_amenity_id").
+			Where("t_amenities.is_deleted = ?", false).
+			Where("t_property_amenities.fk_property_id = ?", property.Id).
+			Find(&hotelAmenities).Error; err != nil {
+			continue // Skip this room if room amenities cannot be fetched
+		}
+		// Prepare hotel response
+		hotel := HotelResponse{
+			ID:             property.Id,
+			Name:           property.Name,
+			WardID:         property.Fk_Argent_Id,
+			DistrictID:     property.Fk_District_Id,
+			ProvinceID:     property.Fk_Province_Id,
+			Description:    &property.Description.String,
+			Longitude:      &property.Longitude.Float64,
+			Latitude:       &property.Latitude.Float64,
+			Address:        property.Address,
+			AgentID:        property.Fk_Argent_Id,
+			Status:         property.Status,
+			Type:           property.Type,
+			HotelAmenities: hotelAmenities, // Populate if needed
+			HotelImages:    hotelImages,    // Populate if needed
+			HotelRooms:     rooms,
+		}
+
+		// Append hotel to hotels list
+		hotels = append(hotels, hotel)
+	}
+
+	// Return JSON response with the list of hotels
+	ctx.JSON(http.StatusOK, gin.H{"hotels": hotels})
 }
