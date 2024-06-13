@@ -45,10 +45,12 @@ func (server *Server) setupRouter() {
 	router.GET("/api/bookings/:bookingId", server.getById)
 
 	router.POST("api/hotels", server.createHotel)
+	router.DELETE("api/hotels/:hotelId", server.deleteHotel)
 	router.GET("api/hotels/:agentId", server.getHotelsByAgent)
 
 	router.GET("api/rooms/:propertyId", server.getListRoomByHotelId)
 	router.POST("api/rooms/", server.createRoom)
+	router.DELETE("api/rooms/:roomId", server.deleteRoom)
 
 	// router.POST("/tokens/renew_access", server.renewAccessToken)
 

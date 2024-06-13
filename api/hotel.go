@@ -14,14 +14,13 @@ import (
 )
 
 type bookingRequest struct {
-	//TODO: retrive from token
-	UserId       uint      `json:"userId"`
-	RoomIds      []uint    `json:"roomIds"`
-	PropertyId   uint      `json:"propertyId"`
-	StartDate    time.Time `json:"startDate"`
-	EndDate      time.Time `json:"endDate"`
-	Deposit      float64   `json:"deposit"`
-	DepositImage *string   `json:"depositImage"`
+	// TODO: Retrieve from token
+	UserId     uint      `form:"userId" binding:"required"`
+	RoomIds    []uint    `form:"roomIds" binding:"required"`
+	PropertyId uint      `form:"propertyId" binding:"required"`
+	StartDate  time.Time `form:"startDate" binding:"required"`
+	EndDate    time.Time `form:"endDate" binding:"required"`
+	Deposit    float64   `form:"deposit"`
 }
 
 type updateStatusRequest struct {
@@ -31,7 +30,9 @@ type updateStatusRequest struct {
 
 func (server *Server) createBooking(ctx *gin.Context) {
 	var req bookingRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+
+	// Parse form data
+	if err := ctx.ShouldBind(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
@@ -118,20 +119,52 @@ func (server *Server) createBooking(ctx *gin.Context) {
 			return
 		}
 	}
-	// Create booking deposit record if deposit is provided
-	if req.Deposit != 0 {
-		deposit := db.T_Booking_Deposits{
-			Fk_Booking_ID: booking.Id,
-			Deposit:       req.Deposit,
-			Image:         req.DepositImage,
-		}
 
-		if err := tx.Create(&deposit).Error; err != nil {
-			tx.Rollback()
-			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-			return
+	// Save uploaded images
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		tx.Rollback()
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	files := form.File["image"]
+	if len(files) != 0 {
+
+		for _, file := range files {
+			filePath := fmt.Sprintf("uploads/%s", file.Filename) // Customize this path as needed
+
+			deposit := db.T_Booking_Deposits{
+				Fk_Booking_ID: booking.Id,
+				Deposit:       req.Deposit,
+			}
+
+			// Save the file locally
+			if err := ctx.SaveUploadedFile(file, filePath); err != nil {
+				tx.Rollback()
+				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+				return
+			}
+			deposit.Image = &filePath
+			if err := tx.Create(&deposit).Error; err != nil {
+				tx.Rollback()
+				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+				return
+			}
+
+			// Create property image record in the database
+			propertyImage := db.T_Property_Images{
+				Url:            filePath,
+				Fk_Property_Id: property.Id,
+			}
+			if err := tx.Create(&propertyImage).Error; err != nil {
+				tx.Rollback()
+				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+				return
+			}
 		}
 	}
+
+	// Create booking deposit record if deposit is provided
 
 	// Commit the transaction
 	tx.Commit()
@@ -530,6 +563,57 @@ func (server *Server) createHotel(ctx *gin.Context) {
 	})
 }
 
+func (server *Server) deleteRoom(ctx *gin.Context) {
+	roomID := ctx.Param("roomId")
+
+	// Check if room ID is valid
+	id, err := strconv.Atoi(roomID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid room ID"})
+		return
+	}
+
+	// Start a transaction
+	tx := server.store.Begin()
+
+	// Update room status to DELETED
+	if err := tx.Model(&db.T_Rooms{}).Where("id = ?", id).Update("status", "DELETED").Error; err != nil {
+		tx.Rollback()
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete room"})
+		return
+	}
+
+	// Commit the transaction
+	tx.Commit()
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Room deleted successfully"})
+}
+func (server *Server) deleteHotel(ctx *gin.Context) {
+	hotelID := ctx.Param("hotelId")
+
+	// Check if hotel ID is valid
+	id, err := strconv.Atoi(hotelID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid hotel ID"})
+		return
+	}
+
+	// Start a transaction
+	tx := server.store.Begin()
+
+	// Update hotel status to DELETED
+	if err := tx.Model(&db.T_Properties{}).Where("id = ?", id).Update("status", "DELETED").Error; err != nil {
+		tx.Rollback()
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete hotel"})
+		return
+	}
+
+	// Commit the transaction
+	tx.Commit()
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Hotel deleted successfully"})
+}
+
 // HotelResponse struct for hotel (property) response
 type HotelResponse struct {
 	ID             uint              `json:"id"`
@@ -595,7 +679,7 @@ func (server *Server) getHotelsByAgent(ctx *gin.Context) {
 
 		// Query rooms for the current hotel
 		var dbRooms []db.T_Rooms
-		if err := server.store.Where("fk_property_id = ?", property.Id).Find(&dbRooms).Error; err != nil {
+		if err := server.store.Where("fk_property_id = ? AND status != ?", property.Id, "DELETED").Find(&dbRooms).Error; err != nil {
 			fmt.Println("ERR", err)
 			continue // Skip this property if rooms cannot be fetched
 		}
