@@ -567,7 +567,7 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-
+	log.Println(">>> req", req)
 	validStatuses := map[string]bool{
 		utils.BookingStatus_CheckOut:  true,
 		utils.BookingStatus_Confirmed: true,
@@ -580,12 +580,15 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status value"})
 		return
 	}
+	log.Println(">>> req validated status")
 
 	// Start a transaction
 	tx := server.store.Begin()
 
 	var booking db.T_Bookings
 	if err := tx.Where("id = ?", req.BookingId).First(&booking).Error; err != nil {
+		log.Println(">>> req get booking err", err)
+
 		tx.Rollback()
 		ctx.JSON(http.StatusNotFound, errorResponse(err))
 		return
@@ -593,6 +596,7 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 
 	// Check if the status is CheckIn and if it is within the allowed check-in time window
 	if req.Status == utils.BookingStatus_CheckIn {
+
 		now := time.Now()
 		startTime := time.Date(booking.Start_Date.Year(), booking.Start_Date.Month(), booking.Start_Date.Day(), 12, 0, 0, 0, booking.Start_Date.Location())
 		endTime := startTime.Add(15 * time.Hour) // From 12 PM to 3 AM next day
@@ -607,6 +611,8 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 	booking.Status = req.Status
 
 	if err := tx.Save(&booking).Error; err != nil {
+		log.Println(">>> req save booking err", err)
+
 		tx.Rollback()
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
