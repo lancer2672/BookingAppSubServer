@@ -35,8 +35,8 @@ func NewServer(config utils.Config, store *gorm.DB) (*Server, error) {
 func (server *Server) setupRouter() {
 	router := gin.Default()
 	router.StaticFS("/uploads", gin.Dir("./uploads", true))
+	router.POST("/api/booking/v2", server.createBookingV2)
 	router.POST("/api/bookings", server.createBooking)
-	router.POST("/api/bookings/v2", server.createBookingV2)
 	router.GET("/healthcheck", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "OK")
 	})
