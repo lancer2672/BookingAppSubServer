@@ -595,20 +595,20 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 	}
 
 	// Check if the status is CheckIn and if it is within the allowed check-in time window
-	if req.Status == utils.BookingStatus_CheckIn {
-
-		now := time.Now()
-		startTime := time.Date(booking.Start_Date.Year(), booking.Start_Date.Month(), booking.Start_Date.Day(), 12, 0, 0, 0, booking.Start_Date.Location())
-		endTime := startTime.Add(15 * time.Hour) // From 12 PM to 3 AM next day
-
-		if !(now.After(startTime) && now.Before(endTime)) {
-			tx.Rollback()
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Check-in is only allowed between 12 PM and 3 AM the next day"})
-			return
-		}
-	}
-
 	booking.Status = req.Status
+	if req.Status == utils.BookingStatus_CheckIn && booking.Status == utils.BookingStatus_CheckIn {
+
+		booking.Status = utils.BookingStatus_CheckOut
+		// now := time.Now()
+		// startTime := time.Date(booking.Start_Date.Year(), booking.Start_Date.Month(), booking.Start_Date.Day(), 12, 0, 0, 0, booking.Start_Date.Location())
+		// endTime := startTime.Add(15 * time.Hour) // From 12 PM to 3 AM next day
+
+		// if !(now.After(startTime) && now.Before(endTime)) {
+		// 	tx.Rollback()
+		// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "Check-in is only allowed between 12 PM and 3 AM the next day"})
+		// 	return
+		// }
+	}
 
 	if err := tx.Save(&booking).Error; err != nil {
 		log.Println(">>> req save booking err", err)
