@@ -23,6 +23,136 @@ type bookingRequest struct {
 	EndDate    time.Time `form:"endDate" "`
 	Deposit    float64   `form:"deposit"`
 }
+type bookingRequestv2 struct {
+	UserId     uint      `json:"userId"`
+	RoomIds    []uint    `json:"roomIds"`
+	PropertyId uint      `json:"propertyId"`
+	StartDate  time.Time `json:"startDate"`
+	EndDate    time.Time `json:"endDate"`
+	Deposit    float64   `json:"deposit"`
+}
+
+func (server *Server) createBookingV2(ctx *gin.Context) {
+	var req bookingRequest
+
+	log.Println(">>>CreateBookingV2")
+	// Parse JSON body
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		log.Println(">>>CreateBookingV2 1 ", err)
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// Start a transaction
+	tx := server.store.Begin()
+	log.Println(">>>CreateBookingV2 1 ")
+
+	var totalPrice float64 = 0
+	// Iterate over each room ID to check availability and calculate the total price
+	for _, roomId := range req.RoomIds {
+		var room db.T_Rooms
+		if err := tx.Where("id = ?", roomId).First(&room).Error; err != nil {
+			tx.Rollback()
+			log.Println(">>>CreateBookingV2 2 ", err)
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+		// Check room availability within the requested time frame
+		var overlappingBookings []db.T_Bookings
+		if err := tx.Joins("JOIN t_booking_rooms ON t_booking_rooms.fk_booking_id = t_bookings.id").
+			Where("t_booking_rooms.fk_room_id = ? AND ((t_bookings.start_date, t_bookings.end_date) OVERLAPS (?, ?))", room.Id, req.StartDate, req.EndDate).
+			Find(&overlappingBookings).Error; err != nil {
+			tx.Rollback()
+			log.Println(">>>CreateBookingV2 3 ", err)
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+
+		// Handle overlapping booking scenario
+		if len(overlappingBookings) > 0 {
+			tx.Rollback()
+			ctx.JSON(http.StatusConflict, gin.H{"error": "Room already booked within this time frame"})
+			return
+		}
+
+		if room.Status != utils.RoomStatusAvaiable {
+			tx.Rollback()
+			log.Println(">>>CreateBookingV2 4 ", room.Status)
+			ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("room %d not available", roomId)))
+			return
+		}
+
+		duration := req.EndDate.Sub(req.StartDate).Hours() / 24
+		totalPrice += float64(room.Price) * duration
+	}
+
+	var property db.T_Properties
+	if err := tx.Where("id = ?", req.PropertyId).First(&property).Error; err != nil {
+		tx.Rollback()
+		log.Println(">>>CreateBookingV2 5 ", err)
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	if property.Status != utils.HotelStatusAvaiable {
+		tx.Rollback()
+		log.Println(">>>CreateBookingV2 6 hotel not available")
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("hotel not available")))
+		return
+	}
+
+	var status = utils.BookingStatus_Confirmed
+	if req.Deposit != 0 {
+		status = utils.BookingStatus_Pending
+	}
+	booking := db.T_Bookings{
+		Fk_User_Id:     req.UserId,
+		Status:         status,
+		Start_Date:     req.StartDate,
+		End_Date:       req.EndDate,
+		Create_At:      time.Now(),
+		Fk_Property_Id: property.Id,
+		Total_Price:    totalPrice,
+	}
+
+	if err := tx.Create(&booking).Error; err != nil {
+		log.Println(">>>CreateBookingV2 7", err)
+		tx.Rollback()
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	for _, roomId := range req.RoomIds {
+		bookingRoom := &db.T_Booking_Rooms{
+			Fk_Room_Id:    roomId,
+			Fk_Booking_id: booking.Id,
+		}
+		if err := tx.Create(&bookingRoom).Error; err != nil {
+			log.Println(">>>CreateBookingV2 8", err)
+			tx.Rollback()
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+	}
+
+	// Create booking deposit record if deposit is provided
+	if req.Deposit != 0 {
+		deposit := db.T_Booking_Deposits{
+			Fk_Booking_ID: booking.Id,
+			Deposit:       req.Deposit,
+		}
+		if err := tx.Create(&deposit).Error; err != nil {
+			log.Println(">>>CreateBookingV2 9", err)
+			tx.Rollback()
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
+	}
+
+	// Commit the transaction
+	tx.Commit()
+
+	ctx.JSON(http.StatusOK, booking)
+}
 
 type updateStatusRequest struct {
 	BookingId uint   `json:"bookingId"`
@@ -180,17 +310,6 @@ func (server *Server) createBooking(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 				return
 			}
-
-			// Create property image record in the database
-			propertyImage := db.T_Property_Images{
-				Url:            filePath,
-				Fk_Property_Id: property.Id,
-			}
-			if err := tx.Create(&propertyImage).Error; err != nil {
-				tx.Rollback()
-				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-				return
-			}
 		}
 	}
 	log.Println(">>>CreateBooking done")
@@ -250,7 +369,7 @@ func (server *Server) getListBookingByUserId(ctx *gin.Context) {
 		return
 	}
 
-	var bookingResponses []BookingResponse
+	var bookingResponses = []BookingResponse{}
 
 	for _, booking := range bookings {
 		var rooms []db.T_Rooms

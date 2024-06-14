@@ -36,6 +36,7 @@ func (server *Server) setupRouter() {
 	router := gin.Default()
 	router.StaticFS("/uploads", gin.Dir("./uploads", true))
 	router.POST("/api/bookings", server.createBooking)
+	router.POST("/api/bookings/v2", server.createBookingV2)
 	router.GET("/healthcheck", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "OK")
 	})
@@ -45,6 +46,7 @@ func (server *Server) setupRouter() {
 	router.GET("/api/bookings/:bookingId", server.getById)
 
 	router.POST("api/hotels", server.createHotel)
+	// router.POST("api/hotels/v2", server.createHotel)
 	router.DELETE("api/hotels/:hotelId", server.deleteHotel)
 	router.GET("api/hotels/:agentId", server.getHotelsByAgent)
 
