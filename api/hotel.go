@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,11 +16,11 @@ import (
 
 type bookingRequest struct {
 	// TODO: Retrieve from token
-	UserId     uint      `form:"userId" binding:"required"`
-	RoomIds    []uint    `form:"roomIds" binding:"required"`
-	PropertyId uint      `form:"propertyId" binding:"required"`
-	StartDate  time.Time `form:"startDate" binding:"required"`
-	EndDate    time.Time `form:"endDate" binding:"required"`
+	UserId     uint      `form:"userId" "`
+	RoomIds    []uint    `form:"roomIds" "`
+	PropertyId uint      `form:"propertyId" "`
+	StartDate  time.Time `form:"startDate" "`
+	EndDate    time.Time `form:"endDate" "`
 	Deposit    float64   `form:"deposit"`
 }
 
@@ -31,14 +32,18 @@ type updateStatusRequest struct {
 func (server *Server) createBooking(ctx *gin.Context) {
 	var req bookingRequest
 
+	log.Println(">>>CreateBooking")
 	// Parse form data
 	if err := ctx.ShouldBind(&req); err != nil {
+		log.Println(">>>CreateBooking 1 ", err)
+
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
 	// Start a transaction
 	tx := server.store.Begin()
+	log.Println(">>>CreateBooking 1 ")
 
 	var totalPrice float64 = 0
 	// Iterate over each room ID to check availability and calculate the total price
@@ -46,6 +51,8 @@ func (server *Server) createBooking(ctx *gin.Context) {
 		var room db.T_Rooms
 		if err := tx.Where("id = ?", roomId).First(&room).Error; err != nil {
 			tx.Rollback()
+			log.Println(">>>CreateBooking 2 ", err)
+
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
@@ -55,6 +62,8 @@ func (server *Server) createBooking(ctx *gin.Context) {
 			Where("t_booking_rooms.fk_room_id = ? AND ((t_bookings.start_date, t_bookings.end_date) OVERLAPS (?, ?))", room.Id, req.StartDate, req.EndDate).
 			Find(&overlappingBookings).Error; err != nil {
 			tx.Rollback()
+			log.Println(">>>CreateBooking 3 ", err)
+
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
@@ -62,12 +71,15 @@ func (server *Server) createBooking(ctx *gin.Context) {
 		// Handle overlapping booking scenario
 		if len(overlappingBookings) > 0 {
 			tx.Rollback()
+
 			ctx.JSON(http.StatusConflict, gin.H{"error": "Room already booked within this time frame"})
 			return
 		}
 
 		if room.Status != utils.RoomStatusAvaiable {
 			tx.Rollback()
+			log.Println(">>>CreateBooking 4 ", room.Status)
+
 			ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("room %d not available", roomId)))
 			return
 		}
@@ -79,12 +91,16 @@ func (server *Server) createBooking(ctx *gin.Context) {
 	var property db.T_Properties
 	if err := tx.Where("id = ?", req.PropertyId).First(&property).Error; err != nil {
 		tx.Rollback()
+		log.Println(">>>CreateBooking 5 ", err)
+
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
 	if property.Status != utils.HotelStatusAvaiable {
 		tx.Rollback()
+		log.Println(">>>CreateBooking 6 hotel not availbe")
+
 		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("hotel not available")))
 		return
 	}
@@ -104,6 +120,8 @@ func (server *Server) createBooking(ctx *gin.Context) {
 	}
 
 	if err := tx.Create(&booking).Error; err != nil {
+		log.Println(">>>CreateBooking 7", err)
+
 		tx.Rollback()
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -114,6 +132,8 @@ func (server *Server) createBooking(ctx *gin.Context) {
 			Fk_Booking_id: booking.Id,
 		}
 		if err := tx.Create(&bookingRoom).Error; err != nil {
+			log.Println(">>>CreateBooking 8", err)
+
 			tx.Rollback()
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
@@ -124,10 +144,14 @@ func (server *Server) createBooking(ctx *gin.Context) {
 	form, err := ctx.MultipartForm()
 	if err != nil {
 		tx.Rollback()
+		log.Println(">>>CreateBooking form", err)
+
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 	files := form.File["image"]
+	log.Println(">>>CreateBooking files", files)
+
 	if len(files) != 0 {
 
 		for _, file := range files {
@@ -139,6 +163,8 @@ func (server *Server) createBooking(ctx *gin.Context) {
 
 			// Save the file locally
 			if err := ctx.SaveUploadedFile(file, filePath); err != nil {
+				log.Println(">>>CreateBooking save file", err)
+
 				tx.Rollback()
 				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 				return
@@ -149,6 +175,7 @@ func (server *Server) createBooking(ctx *gin.Context) {
 
 			deposit.Image = imagePath
 			if err := tx.Create(&deposit).Error; err != nil {
+
 				tx.Rollback()
 				ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 				return
@@ -166,6 +193,7 @@ func (server *Server) createBooking(ctx *gin.Context) {
 			}
 		}
 	}
+	log.Println(">>>CreateBooking done")
 
 	// Create booking deposit record if deposit is provided
 

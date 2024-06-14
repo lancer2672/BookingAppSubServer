@@ -2,34 +2,8 @@ package db
 
 import (
 	"database/sql"
-	"database/sql/driver"
-	"fmt"
 	"time"
 )
-
-type Timetz struct {
-	time.Time
-}
-
-const timetzLayout = "15:04:05.999999-07"
-
-func (t *Timetz) Scan(value interface{}) error {
-	strVal, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("cannot convert %v to Timetz", value)
-	}
-
-	parsedTime, err := time.Parse(timetzLayout, strVal)
-	if err != nil {
-		return fmt.Errorf("error parsing Timetz: %v", err)
-	}
-
-	*t = Timetz{Time: parsedTime}
-	return nil
-}
-func (t Timetz) Value() (driver.Value, error) {
-	return t.Time.Format(timetzLayout), nil
-}
 
 // User struct definition with embedded
 type T_Users struct {
@@ -55,18 +29,19 @@ type T_Argents struct {
 
 // Property struct definition with embedded
 type T_Properties struct {
-	Id             uint            `json:"id"`
-	Name           string          `gorm:"type:varchar(100)" json:"name"`
-	Fk_Ward_Id     uint            `gorm:"not null" json:"fk_ward_id"`
-	Fk_District_Id uint            `gorm:"not null" json:"fk_district_id"`
-	Fk_Province_Id uint            `gorm:"not null" json:"fk_province_id"`
-	Description    sql.NullString  `gorm:"type:text" json:"description"`
-	Longitude      sql.NullFloat64 `json:"longitude"`
-	Latitude       sql.NullFloat64 `json:"latitude"`
-	Address        string          `gorm:"type:varchar(255)" json:"address"`
-	Fk_Argent_Id   uint            `gorm:"not null" json:"fk_argent_id"`
-	Status         string          `gorm:"type:varchar(50)" json:"status"`
-	Type           string          `gorm:"type:varchar(50)" json:"type"`
+	Id              uint            `json:"id"`
+	Name            string          `gorm:"type:varchar(100)" json:"name"`
+	Deposit_Percent float64         ` json:"deposit_percent"`
+	Fk_Ward_Id      uint            `gorm:"not null" json:"fk_ward_id"`
+	Fk_District_Id  uint            `gorm:"not null" json:"fk_district_id"`
+	Fk_Province_Id  uint            `gorm:"not null" json:"fk_province_id"`
+	Description     sql.NullString  `gorm:"type:text" json:"description"`
+	Longitude       sql.NullFloat64 `json:"longitude"`
+	Latitude        sql.NullFloat64 `json:"latitude"`
+	Address         string          `gorm:"type:varchar(255)" json:"address"`
+	Fk_Argent_Id    uint            `gorm:"not null" json:"fk_argent_id"`
+	Status          string          `gorm:"type:varchar(50)" json:"status"`
+	Type            string          `gorm:"type:varchar(50)" json:"type"`
 }
 
 // Room struct definition with embedded
