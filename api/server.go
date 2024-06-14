@@ -34,9 +34,16 @@ func NewServer(config utils.Config, store *gorm.DB) (*Server, error) {
 
 func (server *Server) setupRouter() {
 	router := gin.Default()
+	// config := cors.DefaultConfig()
+	// config.AllowAllOrigins = true
+	// config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+	// config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+
+	// router.Use(cors.New(config))
+
 	router.StaticFS("/uploads", gin.Dir("./uploads", true))
 	router.POST("/api/booking/v2", server.createBookingV2)
-	router.POST("/api/bookings", server.createBooking)
+	// router.POST("/api/bookings", server.createBooking)
 	router.GET("/healthcheck", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "OK")
 	})
