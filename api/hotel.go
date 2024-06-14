@@ -335,17 +335,18 @@ type BookingDepositInfo struct {
 	Deposit float64 `json:"deposit"`
 }
 type PropertyInfo struct {
-	Id             uint    `json:"id"`
-	Name           string  `json:"name"`
-	Address        string  `json:"address"`
-	Fk_Ward_Id     uint    `json:"wardId"`
-	Fk_District_Id uint    `json:"districtId"`
-	Fk_Province_Id uint    `json:"provinceId"`
-	Description    string  `json:"description,omitempty"`
-	Longitude      float64 `json:"longitude,omitempty"`
-	Latitude       float64 `json:"latitude,omitempty"`
-	Status         string  `json:"status"`
-	Type           string  `json:"type"`
+	Id             uint            `json:"id"`
+	Name           string          `json:"name"`
+	Address        string          `json:"address"`
+	Fk_Ward_Id     uint            `json:"wardId"`
+	Fk_District_Id uint            `json:"districtId"`
+	Fk_Province_Id uint            `json:"provinceId"`
+	Description    string          `json:"description,omitempty"`
+	Longitude      float64         `json:"longitude,omitempty"`
+	Latitude       float64         `json:"latitude,omitempty"`
+	Status         string          `json:"status"`
+	Type           string          `json:"type"`
+	Images         []PropertyImage `json:"images"`
 }
 type BookingResponse struct {
 	Id          uint                `json:"id"`
@@ -358,6 +359,10 @@ type BookingResponse struct {
 	Rooms       []RoomInfo          `json:"rooms"`
 	Deposit     *BookingDepositInfo `json:"deposit,omitempty"`
 	Property    PropertyInfo        `json:"property"`
+}
+type PropertyImage struct {
+	Id  uint   `json:"id"`
+	Url string `json:"url"`
 }
 
 func (server *Server) getListBookingByUserId(ctx *gin.Context) {
@@ -404,7 +409,19 @@ func (server *Server) getListBookingByUserId(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
+		var propertyImages []db.T_Property_Images
+		if err := server.store.Where("fk_property_id = ?", property.Id).Find(&propertyImages).Error; err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
 
+		var images []PropertyImage
+		for _, img := range propertyImages {
+			images = append(images, PropertyImage{
+				Id:  img.Id,
+				Url: img.Url,
+			})
+		}
 		propertyInfo := PropertyInfo{
 			Id:             property.Id,
 			Name:           property.Name,
@@ -417,6 +434,7 @@ func (server *Server) getListBookingByUserId(ctx *gin.Context) {
 			Latitude:       property.Latitude.Float64,
 			Status:         property.Status,
 			Type:           property.Type,
+			Images:         images,
 		}
 
 		bookingResponse := BookingResponse{
