@@ -595,7 +595,7 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 	}
 
 	// Check if the status is CheckIn and if it is within the allowed check-in time window
-	booking.Status = req.Status
+
 	if req.Status == utils.BookingStatus_CheckIn && booking.Status == utils.BookingStatus_CheckIn {
 
 		booking.Status = utils.BookingStatus_CheckOut
@@ -608,6 +608,8 @@ func (server *Server) updateBookingStatus(ctx *gin.Context) {
 		// 	ctx.JSON(http.StatusBadRequest, gin.H{"error": "Check-in is only allowed between 12 PM and 3 AM the next day"})
 		// 	return
 		// }
+	} else {
+		booking.Status = req.Status
 	}
 
 	if err := tx.Save(&booking).Error; err != nil {
